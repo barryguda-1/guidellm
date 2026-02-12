@@ -93,18 +93,26 @@ def _load_config_str(data: str, config_class: type[ConfigT]) -> ConfigT | None:
         except Exception as err:  # noqa: BLE001
             error = err
 
-    if data_str.count("=") > 1:
+    if data_str.count("=") >= 1:
         # key=value pairs separated by commas
         try:
             config_dict = {}
             items = data_str.split(",")
             for item in items:
-                key, value = item.split("=")
-                config_dict[key.strip()] = (
-                    int(value.strip())
-                    if value.strip().isnumeric()
-                    else value.strip()
-                )
+                if "=" not in item:
+                    continue
+                key, value = item.split("=", 1)  # Split only on first '='
+                key = key.strip()
+                value = value.strip()
+
+                # Try to convert to int, then float, otherwise keep as string
+                if value.isnumeric() or (value.startswith("-") and value[1:].isnumeric()):
+                    config_dict[key] = int(value)
+                else:
+                    try:
+                        config_dict[key] = float(value)
+                    except ValueError:
+                        config_dict[key] = value
 
             return config_class.model_validate(config_dict)
         except Exception as err:  # noqa: BLE001
